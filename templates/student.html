@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduVault — Student Library</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0f1a; --surface: #111827; --card: #161d2e; --border: #1e2d45;
+      --accent: #4f8ef7; --accent2: #e8c46a; --text: #f0ede4; --muted: #7a8499;
+      --radius: 14px;
+    }
+    html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+
+    .bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.13; animation: drift 14s ease-in-out infinite alternate; }
+    .orb1 { width: 500px; height: 500px; background: #4f8ef7; top: -100px; left: -80px; }
+    .orb2 { width: 350px; height: 350px; background: #e8c46a; bottom: -80px; right: -60px; animation-delay: -5s; }
+    @keyframes drift { from { transform: translate(0,0); } to { transform: translate(30px,25px); } }
+    .grid-lines {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    /* NAV */
+    nav {
+      position: relative; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 40px; border-bottom: 1px solid var(--border);
+      background: rgba(11,15,26,0.8); backdrop-filter: blur(12px);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    .nav-logo-text { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; color: var(--text); }
+    .nav-badge { background: rgba(79,142,247,0.12); border: 1px solid rgba(79,142,247,0.3); border-radius: 100px; padding: 5px 14px; font-size: 0.75rem; color: var(--accent); }
+    .nav-back { color: var(--muted); text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; transition: color 0.2s; }
+    .nav-back:hover { color: var(--text); }
+
+    /* MAIN */
+    .main { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 48px 24px 80px; }
+
+    /* STEP INDICATOR */
+    .steps {
+      display: flex; align-items: center; gap: 0;
+      margin-bottom: 40px;
+      animation: fadeDown 0.5s ease both;
+    }
+    .step { display: flex; align-items: center; gap: 10px; }
+    .step-num {
+      width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 500; color: var(--muted);
+      transition: all 0.3s;
+    }
+    .step-num.active { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.1); }
+    .step-num.done { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .step-label { font-size: 0.8rem; color: var(--muted); transition: color 0.3s; }
+    .step-label.active { color: var(--accent); }
+    .step-label.done { color: var(--text); }
+    .step-line { width: 40px; height: 1px; background: var(--border); margin: 0 10px; }
+
+    /* SECTION TITLE */
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.8rem; font-weight: 700; margin-bottom: 8px;
+      animation: fadeDown 0.5s ease 0.1s both;
+    }
+    .section-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 28px; animation: fadeDown 0.5s ease 0.15s both; }
+
+    /* GRID OF OPTIONS */
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 14px;
+      animation: fadeUp 0.5s ease 0.2s both;
+    }
+    .option-btn {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 16px;
+      cursor: pointer; text-align: left;
+      transition: all 0.2s ease;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .option-btn:hover { border-color: rgba(79,142,247,0.4); background: rgba(79,142,247,0.05); transform: translateY(-2px); }
+    .option-btn.selected { border-color: var(--accent); background: rgba(79,142,247,0.1); box-shadow: 0 0 0 1px var(--accent); }
+    .option-icon { font-size: 1.4rem; }
+    .option-label { font-size: 0.9rem; font-weight: 500; color: var(--text); }
+    .option-sub { font-size: 0.75rem; color: var(--muted); }
+
+    /* SELECTED CRUMB */
+    .crumb-bar {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 100px; padding: 8px 20px;
+      margin-bottom: 28px; width: fit-content;
+      animation: fadeDown 0.4s ease both;
+    }
+    .crumb-item { font-size: 0.82rem; color: var(--muted); }
+    .crumb-item.active { color: var(--accent); font-weight: 500; }
+    .crumb-sep { color: var(--border); }
+    .crumb-change { font-size: 0.75rem; color: var(--accent); cursor: pointer; margin-left: 6px; text-decoration: underline; }
+
+    /* FILE LIST */
+    .file-list { display: flex; flex-direction: column; gap: 12px; animation: fadeUp 0.5s ease 0.1s both; }
+    .file-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 22px;
+      display: flex; align-items: center; gap: 16px;
+      cursor: pointer; text-decoration: none; color: inherit;
+      transition: all 0.2s ease;
+    }
+    .file-card:hover { border-color: rgba(79,142,247,0.4); background: rgba(79,142,247,0.04); transform: translateX(4px); }
+    .file-type-badge {
+      width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+    }
+    .badge-pdf { background: rgba(239,68,68,0.15); }
+    .badge-ppt { background: rgba(249,115,22,0.15); }
+    .badge-doc { background: rgba(59,130,246,0.15); }
+    .badge-img { background: rgba(16,185,129,0.15); }
+    .file-info { flex: 1; }
+    .file-name { font-size: 0.95rem; font-weight: 500; margin-bottom: 4px; }
+    .file-meta { font-size: 0.75rem; color: var(--muted); }
+    .file-arrow { color: var(--muted); font-size: 1.1rem; transition: transform 0.2s; }
+    .file-card:hover .file-arrow { transform: translateX(4px); color: var(--accent); }
+
+    /* LOADING STATE */
+    .loading-state {
+      text-align: center; padding: 60px 20px;
+      color: var(--muted); animation: fadeUp 0.5s ease both;
+    }
+    .loading-spinner {
+      width: 36px; height: 36px; border: 3px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* EMPTY STATE */
+    .empty-state {
+      text-align: center; padding: 60px 20px;
+      color: var(--muted); animation: fadeUp 0.5s ease both;
+    }
+    .empty-icon { font-size: 3rem; margin-bottom: 16px; }
+    .empty-title { font-size: 1.1rem; color: var(--text); margin-bottom: 8px; }
+
+    /* ERROR STATE */
+    .error-state {
+      text-align: center; padding: 40px 20px;
+      color: var(--muted); animation: fadeUp 0.5s ease both;
+      background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2);
+      border-radius: var(--radius);
+    }
+    .error-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .error-title { font-size: 1rem; color: #f87171; margin-bottom: 6px; }
+    .retry-btn {
+      margin-top: 16px; background: none; border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px; padding: 8px 20px; color: #f87171;
+      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .retry-btn:hover { background: rgba(239,68,68,0.1); }
+
+    /* SEARCH BAR */
+    .search-wrap { position: relative; margin-bottom: 24px; animation: fadeDown 0.4s ease 0.1s both; }
+    .search-input {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      border-radius: 100px; padding: 12px 20px 12px 44px;
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: rgba(79,142,247,0.5); }
+    .search-input::placeholder { color: var(--muted); }
+    .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 1rem; }
+
+    @keyframes fadeDown { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeUp   { from { opacity:0; transform:translateY(14px);  } to { opacity:1; transform:translateY(0); } }
+  </style>
+</head>
+<body>
+  <div class="bg-canvas"><div class="orb orb1"></div><div class="orb orb2"></div></div>
+  <div class="grid-lines"></div>
+
+  <nav>
+    <a href="index.html" class="nav-logo">
+      <div class="nav-logo-icon">📚</div>
+      <span class="nav-logo-text">EduVault</span>
+    </a>
+    <span class="nav-badge">🎒 Student</span>
+    <a href="index.html" class="nav-back">← Home</a>
+  </nav>
+
+  <div class="main">
+
+    <!-- STEP INDICATOR -->
+    <div class="steps" id="stepIndicator">
+      <div class="step">
+        <div class="step-num active" id="sn1">1</div>
+        <span class="step-label active" id="sl1">Select Class</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step">
+        <div class="step-num" id="sn2">2</div>
+        <span class="step-label" id="sl2">Select Subject</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step">
+        <div class="step-num" id="sn3">3</div>
+        <span class="step-label" id="sl3">View Files</span>
+      </div>
+    </div>
+
+    <!-- DYNAMIC CONTENT -->
+    <div id="content"></div>
+
+  </div>
+
+  <script>
+    // ── DATA ──────────────────────────────────────────────
+    const CLASSES = [
+      { id: 'class6',  label: 'Class 6',  icon: '📗', sub: '6th Standard' },
+      { id: 'class7',  label: 'Class 7',  icon: '📘', sub: '7th Standard' },
+      { id: 'class8',  label: 'Class 8',  icon: '📙', sub: '8th Standard' },
+      { id: 'class9',  label: 'Class 9',  icon: '📕', sub: '9th Standard' },
+      { id: 'class10', label: 'Class 10', icon: '📓', sub: '10th Standard' },
+      { id: 'class11', label: 'Class 11', icon: '📒', sub: '11th Standard' },
+      { id: 'class12', label: 'Class 12', icon: '📔', sub: '12th Standard' },
+    ];
+
+    const SUBJECTS = [
+      { id: 'maths',   label: 'Mathematics', icon: '📐', sub: 'Algebra, Geometry & more' },
+      { id: 'science', label: 'Science',      icon: '🔬', sub: 'Physics, Chemistry, Bio' },
+      { id: 'english', label: 'English',      icon: '📖', sub: 'Language & Literature' },
+      { id: 'history', label: 'History',      icon: '🏛️', sub: 'Social Studies' },
+      { id: 'geo',     label: 'Geography',    icon: '🌍', sub: 'Physical & Human Geo' },
+      { id: 'hindi',   label: 'Hindi',        icon: '🪔', sub: 'Language & Grammar' },
+      { id: 'cs',      label: 'Computer Sc.', icon: '💻', sub: 'Programming & IT' },
+      { id: 'art',     label: 'Art & Craft',  icon: '🎨', sub: 'Creative Studies' },
+    ];
+
+    // ── LABEL MAPS ────────────────────────────────────────
+    // These must match exactly what the faculty upload form sends to the backend
+    const CLASS_LABEL = {
+      class6:'Class 6', class7:'Class 7', class8:'Class 8',
+      class9:'Class 9', class10:'Class 10', class11:'Class 11', class12:'Class 12'
+    };
+    const SUBJECT_LABEL = {
+      maths:'Mathematics', science:'Science', english:'English',
+      history:'History', geo:'Geography', hindi:'Hindi',
+      cs:'Computer Science', art:'Art & Craft'
+    };
+
+    // ── STATE ─────────────────────────────────────────────
+    let selectedClass   = null;
+    let selectedSubject = null;
+
+    // ── FETCH FILES FROM BACKEND API ──────────────────────
+    // FIX: was reading from localStorage (client-side only).
+    //      Now fetches from /api/files which reads from SQLite + Gmail.
+    async function getFilesFor(classLabel, subjectLabel) {
+      const url = `/api/files?class_name=${encodeURIComponent(classLabel)}&subject=${encodeURIComponent(subjectLabel)}`;
+      const res  = await fetch(url);
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = await res.json();
+      return data.files || [];
+    }
+
+    // ── STEP HELPERS ─────────────────────────────────────
+    function setStep(step) {
+      [1,2,3].forEach(i => {
+        const n = document.getElementById('sn'+i);
+        const l = document.getElementById('sl'+i);
+        if (i < step)      { n.className='step-num done';   l.className='step-label done'; n.textContent='✓'; }
+        else if (i===step) { n.className='step-num active'; l.className='step-label active'; n.textContent=i; }
+        else               { n.className='step-num';        l.className='step-label'; n.textContent=i; }
+      });
+    }
+
+    // ── RENDER ────────────────────────────────────────────
+    function renderClassSelect() {
+      setStep(1);
+      document.getElementById('content').innerHTML = `
+        <h2 class="section-title">Select Your Class</h2>
+        <p class="section-sub">Choose the class you are currently in.</p>
+        <div class="options-grid">
+          ${CLASSES.map(c => `
+            <button class="option-btn" onclick="selectClass('${c.id}','${c.label}')">
+              <span class="option-icon">${c.icon}</span>
+              <span class="option-label">${c.label}</span>
+              <span class="option-sub">${c.sub}</span>
+            </button>
+          `).join('')}
+        </div>`;
+    }
+
+    function renderSubjectSelect() {
+      setStep(2);
+      const cls = CLASSES.find(c=>c.id===selectedClass);
+      document.getElementById('content').innerHTML = `
+        <div class="crumb-bar">
+          <span class="crumb-item done">${cls.icon} ${cls.label}</span>
+          <span class="crumb-sep">›</span>
+          <span class="crumb-item active">Choose Subject</span>
+          <span class="crumb-change" onclick="renderClassSelect()">Change</span>
+        </div>
+        <h2 class="section-title">Select a Subject</h2>
+        <p class="section-sub">Browse materials for ${cls.label} — pick your subject.</p>
+        <div class="options-grid">
+          ${SUBJECTS.map(s => `
+            <button class="option-btn" onclick="selectSubject('${s.id}','${s.label}')">
+              <span class="option-icon">${s.icon}</span>
+              <span class="option-label">${s.label}</span>
+              <span class="option-sub">${s.sub}</span>
+            </button>
+          `).join('')}
+        </div>`;
+    }
+
+    async function renderFileList() {
+      setStep(3);
+      const cls      = CLASSES.find(c => c.id === selectedClass);
+      const sub      = SUBJECTS.find(s => s.id === selectedSubject);
+      const clsLabel = CLASS_LABEL[selectedClass]    || cls.label;
+      const subLabel = SUBJECT_LABEL[selectedSubject] || sub.label;
+
+      // Show skeleton while loading
+      document.getElementById('content').innerHTML = `
+        <div class="crumb-bar">
+          <span class="crumb-item done">${cls.icon} ${cls.label}</span>
+          <span class="crumb-sep">›</span>
+          <span class="crumb-item done">${sub.icon} ${sub.label}</span>
+          <span class="crumb-sep">›</span>
+          <span class="crumb-item active">Files</span>
+          <span class="crumb-change" onclick="renderClassSelect()">Start Over</span>
+        </div>
+        <h2 class="section-title">${sub.label} — ${cls.label}</h2>
+        <p class="section-sub">Loading files…</p>
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>Fetching files from library…</p>
+        </div>`;
+
+      let files;
+      try {
+        files = await getFilesFor(clsLabel, subLabel);
+      } catch (err) {
+        document.getElementById('content').innerHTML = `
+          <div class="crumb-bar">
+            <span class="crumb-item done">${cls.icon} ${cls.label}</span>
+            <span class="crumb-sep">›</span>
+            <span class="crumb-item done">${sub.icon} ${sub.label}</span>
+            <span class="crumb-sep">›</span>
+            <span class="crumb-item active">Files</span>
+            <span class="crumb-change" onclick="renderClassSelect()">Start Over</span>
+          </div>
+          <h2 class="section-title">${sub.label} — ${cls.label}</h2>
+          <p class="section-sub">Could not load files.</p>
+          <div class="error-state">
+            <div class="error-icon">⚠️</div>
+            <div class="error-title">Could not load files</div>
+            <p>There was a problem connecting to the server. Please try again.</p>
+            <button class="retry-btn" onclick="renderFileList()">↻ Retry</button>
+          </div>`;
+        return;
+      }
+
+      // Re-render with real data
+      const fileHTML = files.length === 0
+        ? `<div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <div class="empty-title">No files uploaded yet</div>
+            <p>Your faculty hasn't uploaded anything here yet. Check back soon!</p>
+           </div>`
+        : `
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input class="search-input" type="text" placeholder="Search files…"
+              oninput="filterFiles(this.value)" id="searchInput"/>
+          </div>
+          <div class="file-list" id="fileList">
+            ${files.map((f,i) => fileCardHTML(f, i, clsLabel, subLabel)).join('')}
+          </div>`;
+
+      document.getElementById('content').innerHTML = `
+        <div class="crumb-bar">
+          <span class="crumb-item done">${cls.icon} ${cls.label}</span>
+          <span class="crumb-sep">›</span>
+          <span class="crumb-item done">${sub.icon} ${sub.label}</span>
+          <span class="crumb-sep">›</span>
+          <span class="crumb-item active">Files</span>
+          <span class="crumb-change" onclick="renderClassSelect()">Start Over</span>
+        </div>
+        <h2 class="section-title">${sub.label} — ${cls.label}</h2>
+        <p class="section-sub">${files.length} file${files.length!==1?'s':''} available · Uploaded by your faculty</p>
+        ${fileHTML}`;
+
+      // Store files in memory for search filtering
+      window._currentFiles    = files;
+      window._currentClsLabel = clsLabel;
+      window._currentSubLabel = subLabel;
+    }
+
+    function fileCardHTML(f, i, clsLabel, subLabel) {
+      const ext    = (f.extension || f.name.split('.').pop() || '').toLowerCase();
+      const icons  = { pdf:'📄', ppt:'📊', pptx:'📊', doc:'📝', docx:'📝', png:'🖼️', jpg:'🖼️', jpeg:'🖼️' };
+      const badges = { pdf:'badge-pdf', ppt:'badge-ppt', pptx:'badge-ppt', doc:'badge-doc', docx:'badge-doc' };
+
+      // FIX: Pass f.id (UUID) so the viewer can call /api/files/<id>/download.
+      //      Also pass metadata as URL params so the viewer can display them
+      //      without a second API call or relying on localStorage.
+      const params = new URLSearchParams({
+        file_id  : f.id,
+        file     : f.name,
+        type     : ext,
+        class    : clsLabel,
+        subject  : subLabel,
+        title    : f.title || f.name,
+        uploader : f.uploaded_by || '',
+        date     : f.upload_date || '',
+        size     : f.size || '',
+      });
+      const viewerURL = `pdf-viewer.html?${params.toString()}`;
+
+      return `
+        <a class="file-card" href="${viewerURL}"
+           style="animation: fadeUp 0.4s ease ${i*0.06}s both;">
+          <div class="file-type-badge ${badges[ext]||'badge-doc'}">${icons[ext]||'📄'}</div>
+          <div class="file-info">
+            <div class="file-name">${f.title || f.name}</div>
+            <div class="file-meta">Uploaded by ${f.uploaded_by || '—'} · ${f.upload_date || ''} · ${f.size || ''}</div>
+          </div>
+          <span class="file-arrow">→</span>
+        </a>`;
+    }
+
+    function filterFiles(query) {
+      const files    = window._currentFiles    || [];
+      const clsLabel = window._currentClsLabel || '';
+      const subLabel = window._currentSubLabel || '';
+      const filtered = files.filter(f =>
+        (f.title || f.name).toLowerCase().includes(query.toLowerCase())
+      );
+      document.getElementById('fileList').innerHTML =
+        filtered.length
+          ? filtered.map((f,i) => fileCardHTML(f, i, clsLabel, subLabel)).join('')
+          : `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No files match your search</div></div>`;
+    }
+
+    // ── ACTIONS ───────────────────────────────────────────
+    function selectClass(id, label) {
+      selectedClass = id;
+      renderSubjectSelect();
+    }
+    function selectSubject(id, label) {
+      selectedSubject = id;
+      renderFileList();
+    }
+
+    // ── INIT ──────────────────────────────────────────────
+    renderClassSelect();
+  </script>
+</body>
+</html>

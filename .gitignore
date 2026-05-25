@@ -1,0 +1,26 @@
+# ── SENSITIVE — never commit these ────────────────────────────────
+.env
+*.env
+
+# ── Database — auto-created on first run ──────────────────────────
+eduvault.db
+eduvault.db-shm
+eduvault.db-wal
+
+# ── Logs — auto-created ───────────────────────────────────────────
+logs/
+*.log
+
+# ── Python ────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv/
+
+# ── OS files ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

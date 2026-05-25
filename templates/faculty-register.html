@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduVault — Faculty Register</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0f1a; --surface: #111827; --card: #161d2e; --border: #1e2d45;
+      --accent: #e8c46a; --accent2: #4f8ef7; --text: #f0ede4; --muted: #7a8499;
+      --error: #f87171; --success: #34d399; --radius: 14px;
+    }
+    html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+
+    .bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.13; animation: drift 14s ease-in-out infinite alternate; }
+    .orb1 { width: 480px; height: 480px; background: #e8c46a; top: -100px; right: -80px; }
+    .orb2 { width: 360px; height: 360px; background: #4f8ef7; bottom: -80px; left: -60px; animation-delay: -6s; }
+    @keyframes drift { from { transform: translate(0,0); } to { transform: translate(30px,25px); } }
+    .grid-lines {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    nav {
+      position: relative; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 40px; border-bottom: 1px solid var(--border);
+      background: rgba(11,15,26,0.8); backdrop-filter: blur(12px);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent2), var(--accent)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    .nav-logo-text { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; color: var(--text); }
+    .nav-badge { background: rgba(232,196,106,0.12); border: 1px solid rgba(232,196,106,0.3); border-radius: 100px; padding: 5px 14px; font-size: 0.75rem; color: var(--accent); }
+    .nav-back { color: var(--muted); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+    .nav-back:hover { color: var(--text); }
+
+    .page {
+      position: relative; z-index: 1;
+      min-height: calc(100vh - 65px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px 20px;
+    }
+
+    .auth-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 44px 40px;
+      width: 100%; max-width: 460px;
+      animation: fadeUp 0.6s ease both;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+    }
+
+    /* PROGRESS STEPS */
+    .progress-bar {
+      display: flex; align-items: center; gap: 0;
+      margin-bottom: 32px;
+    }
+    .prog-step { display: flex; align-items: center; gap: 8px; }
+    .prog-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 600; color: var(--muted); transition: all 0.3s;
+    }
+    .prog-num.active { border-color: var(--accent); color: var(--accent); background: rgba(232,196,106,0.1); }
+    .prog-num.done   { border-color: var(--accent); background: var(--accent); color: #0b0f1a; }
+    .prog-label { font-size: 0.78rem; color: var(--muted); transition: color 0.3s; }
+    .prog-label.active { color: var(--accent); }
+    .prog-line { flex: 1; height: 1px; background: var(--border); margin: 0 8px; }
+
+    .auth-icon { width: 52px; height: 52px; border-radius: 14px; background: rgba(232,196,106,0.12); border: 1px solid rgba(232,196,106,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: 18px; }
+    .auth-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
+    .auth-sub { color: var(--muted); font-size: 0.875rem; margin-bottom: 28px; line-height: 1.6; }
+
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 0.78rem; font-weight: 500; color: var(--muted); margin-bottom: 7px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .input-wrap { position: relative; }
+    .input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 1rem; pointer-events: none; }
+    input[type="text"], input[type="email"], input[type="password"], select {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px 12px 42px;
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none; -webkit-appearance: none;
+    }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a8499' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+    select option { background: var(--surface); }
+    input:focus, select:focus { border-color: rgba(232,196,106,0.5); box-shadow: 0 0 0 3px rgba(232,196,106,0.08); }
+    input.error { border-color: var(--error); }
+
+    .toggle-password { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.9rem; }
+
+    .field-error { font-size: 0.75rem; color: var(--error); margin-top: 5px; display: none; }
+    .field-error.show { display: block; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .btn-submit {
+      width: 100%; padding: 13px; border: none; border-radius: 10px;
+      background: linear-gradient(135deg, #d4a843, #e8c46a);
+      color: #0b0f1a; font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem; font-weight: 600; cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s; margin-top: 8px;
+    }
+    .btn-submit:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .btn-back {
+      width: 100%; padding: 11px; border: 1px solid var(--border); border-radius: 10px;
+      background: none; color: var(--muted); font-family: 'DM Sans', sans-serif;
+      font-size: 0.875rem; cursor: pointer; margin-top: 10px; transition: all 0.2s;
+    }
+    .btn-back:hover { border-color: var(--accent2); color: var(--accent2); }
+
+    .divider { display: flex; align-items: center; gap: 14px; margin: 20px 0; color: var(--muted); font-size: 0.8rem; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .switch-text { text-align: center; font-size: 0.85rem; color: var(--muted); }
+    .switch-text a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    .switch-text a:hover { text-decoration: underline; }
+
+    /* SUCCESS STATE */
+    .success-state { text-align: center; padding: 20px 0; animation: fadeUp 0.5s ease both; }
+    .success-icon { font-size: 3.5rem; margin-bottom: 18px; }
+    .success-title { font-family: 'Playfair Display', serif; font-size: 1.5rem; margin-bottom: 10px; }
+    .success-sub { color: var(--muted); font-size: 0.875rem; line-height: 1.7; margin-bottom: 28px; }
+    .btn-go {
+      display: inline-block; padding: 13px 32px; border-radius: 10px;
+      background: linear-gradient(135deg, #d4a843, #e8c46a);
+      color: #0b0f1a; font-weight: 600; font-size: 0.95rem;
+      text-decoration: none; transition: opacity 0.2s;
+    }
+    .btn-go:hover { opacity: 0.88; }
+
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--surface); border: 1px solid var(--border); border-radius: 100px;
+      padding: 11px 24px; font-size: 0.85rem; color: var(--text);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+      white-space: nowrap; z-index: 100;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.fail { border-color: rgba(248,113,113,0.4); color: var(--error); }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
+    @media (max-width: 480px) { .auth-card { padding: 32px 22px; } .form-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="bg-canvas"><div class="orb orb1"></div><div class="orb orb2"></div></div>
+  <div class="grid-lines"></div>
+
+  <nav>
+    <a href="index.html" class="nav-logo">
+      <div class="nav-logo-icon">📚</div>
+      <span class="nav-logo-text">EduVault</span>
+    </a>
+    <span class="nav-badge">🧑‍🏫 Faculty Registration</span>
+    <a href="faculty-login.html" class="nav-back">← Back to Login</a>
+  </nav>
+
+  <div class="page">
+    <div class="auth-card">
+
+      <!-- STEP 1: ACCOUNT INFO -->
+      <div id="step1">
+        <div class="progress-bar">
+          <div class="prog-step">
+            <div class="prog-num active" id="pn1">1</div>
+            <span class="prog-label active">Account</span>
+          </div>
+          <div class="prog-line"></div>
+          <div class="prog-step">
+            <div class="prog-num" id="pn2">2</div>
+            <span class="prog-label" id="pl2">Profile</span>
+          </div>
+          <div class="prog-line"></div>
+          <div class="prog-step">
+            <div class="prog-num" id="pn3">3</div>
+            <span class="prog-label" id="pl3">Done</span>
+          </div>
+        </div>
+
+        <div class="auth-icon">📋</div>
+        <h1 class="auth-title">Create Account</h1>
+        <p class="auth-sub">Step 1 of 2 — Set up your login credentials.</p>
+
+        <div class="form-group">
+          <label>Email Address</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉️</span>
+            <input type="email" id="s1Email" placeholder="teacher@school.edu"/>
+          </div>
+          <div class="field-error" id="s1EmailErr">Please enter a valid email address.</div>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="s1Pass" placeholder="Minimum 6 characters"/>
+            <button class="toggle-password" type="button" onclick="togglePwd('s1Pass',this)">👁</button>
+          </div>
+          <div class="field-error" id="s1PassErr">Password must be at least 6 characters.</div>
+        </div>
+        <div class="form-group">
+          <label>Confirm Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="s1Pass2" placeholder="Re-enter your password"/>
+            <button class="toggle-password" type="button" onclick="togglePwd('s1Pass2',this)">👁</button>
+          </div>
+          <div class="field-error" id="s1Pass2Err">Passwords do not match.</div>
+        </div>
+
+        <button class="btn-submit" onclick="goStep2()">Continue →</button>
+        <div class="divider">or</div>
+        <p class="switch-text">Already have an account? <a href="faculty-login.html">Sign in</a></p>
+      </div>
+
+      <!-- STEP 2: PROFILE INFO -->
+      <div id="step2" style="display:none;">
+        <div class="progress-bar">
+          <div class="prog-step">
+            <div class="prog-num done">✓</div>
+            <span class="prog-label">Account</span>
+          </div>
+          <div class="prog-line"></div>
+          <div class="prog-step">
+            <div class="prog-num active">2</div>
+            <span class="prog-label active">Profile</span>
+          </div>
+          <div class="prog-line"></div>
+          <div class="prog-step">
+            <div class="prog-num" id="pn3b">3</div>
+            <span class="prog-label">Done</span>
+          </div>
+        </div>
+
+        <div class="auth-icon">👤</div>
+        <h1 class="auth-title">Your Profile</h1>
+        <p class="auth-sub">Step 2 of 2 — Tell us a bit about yourself.</p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Title</label>
+            <div class="input-wrap">
+              <span class="input-icon">🎓</span>
+              <select id="s2Title">
+                <option value="">—</option>
+                <option>Mr.</option><option>Ms.</option><option>Mrs.</option>
+                <option>Dr.</option><option>Prof.</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Full Name</label>
+            <div class="input-wrap">
+              <span class="input-icon">👤</span>
+              <input type="text" id="s2Name" placeholder="Your full name"/>
+            </div>
+            <div class="field-error" id="s2NameErr">Please enter your full name.</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Primary Subject</label>
+          <div class="input-wrap">
+            <span class="input-icon">📚</span>
+            <select id="s2Subject">
+              <option value="">— Select Subject —</option>
+              <option>Mathematics</option><option>Science</option><option>English</option>
+              <option>History</option><option>Geography</option><option>Hindi</option>
+              <option>Computer Science</option><option>Art &amp; Craft</option><option>Other</option>
+            </select>
+          </div>
+          <div class="field-error" id="s2SubjectErr">Please select your primary subject.</div>
+        </div>
+
+        <div class="form-group">
+          <label>Classes You Teach</label>
+          <div class="input-wrap">
+            <span class="input-icon">🏫</span>
+            <select id="s2Class">
+              <option value="">— Select Primary Class —</option>
+              <option>Class 6</option><option>Class 7</option><option>Class 8</option>
+              <option>Class 9</option><option>Class 10</option><option>Class 11</option>
+              <option>Class 12</option><option>Multiple Classes</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn-submit" onclick="handleRegister()">Create My Account 🎉</button>
+        <button class="btn-back" onclick="goBackStep1()">← Back</button>
+      </div>
+
+      <!-- SUCCESS STATE -->
+      <div id="stepDone" style="display:none;">
+        <div class="success-state">
+          <div class="success-icon">🎉</div>
+          <div class="success-title">Account Created!</div>
+          <p class="success-sub">
+            Welcome to EduVault! Your faculty account is ready.<br/>
+            You'll be redirected to your dashboard in a moment.
+          </p>
+          <a href="faculty-profile.html" class="btn-go">Go to Dashboard →</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Temp store for step-1 data while going to step-2
+    let step1Data = {};
+
+    function togglePwd(id, btn) {
+      const inp = document.getElementById(id);
+      inp.type  = inp.type === 'password' ? 'text' : 'password';
+      btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+    }
+
+    function showToast(msg, type='') {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.className = 'toast show ' + type;
+      setTimeout(() => t.className = 'toast ' + type, 2800);
+    }
+
+    function setErr(id, show) {
+      document.getElementById(id).className = 'field-error' + (show ? ' show' : '');
+    }
+
+    // ── STEP 1 → 2 ────────────────────────────────────────
+    async function goStep2() {
+      const email = document.getElementById('s1Email').value.trim();
+      const pass  = document.getElementById('s1Pass').value;
+      const pass2 = document.getElementById('s1Pass2').value;
+      setErr('s1EmailErr', false); setErr('s1PassErr', false); setErr('s1Pass2Err', false);
+      let ok = true;
+      if (!email || !email.includes('@')) { setErr('s1EmailErr', true); ok = false; }
+      if (pass.length < 6)               { setErr('s1PassErr',  true); ok = false; }
+      if (pass !== pass2)                { setErr('s1Pass2Err', true); ok = false; }
+      if (!ok) return;
+
+      // Check duplicate email via API (not localStorage)
+      try {
+        const res = await fetch('/api/faculty/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: '___check_only___' }),
+        });
+        // 401 = wrong password = email exists; 200 = email+pass match (edge case)
+        // We just look for a non-404/non-400 that confirms email is known
+        // Better: call a dedicated check. For now, we trust the register endpoint to reject duplicates.
+      } catch (_) {}
+
+      step1Data = { email, password: pass };
+      document.getElementById('step1').style.display = 'none';
+      document.getElementById('step2').style.display = 'block';
+    }
+
+    function goBackStep1() {
+      document.getElementById('step2').style.display = 'none';
+      document.getElementById('step1').style.display = 'block';
+    }
+
+    // ── FINAL REGISTER ────────────────────────────────────
+    async function handleRegister() {
+      const title   = document.getElementById('s2Title').value;
+      const name    = document.getElementById('s2Name').value.trim();
+      const subject = document.getElementById('s2Subject').value;
+      const cls     = document.getElementById('s2Class').value;
+      setErr('s2NameErr', false); setErr('s2SubjectErr', false);
+      let ok = true;
+      if (!name)    { setErr('s2NameErr',    true); ok = false; }
+      if (!subject) { setErr('s2SubjectErr', true); ok = false; }
+      if (!ok) return;
+
+      const fullName = (title ? title + ' ' : '') + name;
+
+      const btn = document.querySelector('#step2 .btn-submit');
+      btn.disabled = true; btn.textContent = 'Creating account…';
+
+      try {
+        const res = await fetch('/api/faculty/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name:          fullName,
+            email:         step1Data.email,
+            password:      step1Data.password,
+            subject:       subject,
+            primary_class: cls,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status === 409) showToast('⚠️ This email is already registered.', 'fail');
+          else showToast('❌ ' + (data.error || 'Registration failed.'), 'fail');
+          btn.disabled = false; btn.textContent = 'Create My Account 🎉';
+          return;
+        }
+        // Session cookie is set by Flask; store display info locally
+        localStorage.setItem('eduvault_current', JSON.stringify(data.faculty));
+        document.getElementById('step2').style.display   = 'none';
+        document.getElementById('stepDone').style.display = 'block';
+        setTimeout(() => window.location.href = 'faculty-profile.html', 2800);
+      } catch (err) {
+        showToast('❌ Server error. Is Flask running?', 'fail');
+        btn.disabled = false; btn.textContent = 'Create My Account 🎉';
+      }
+    }
+  </script>
+</body>
+</html>

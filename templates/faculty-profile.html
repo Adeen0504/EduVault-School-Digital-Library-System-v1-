@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduVault — Faculty Profile</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0f1a; --surface: #111827; --card: #161d2e; --border: #1e2d45;
+      --accent: #e8c46a; --accent2: #4f8ef7; --text: #f0ede4; --muted: #7a8499;
+      --error: #f87171; --success: #34d399; --radius: 14px;
+    }
+    html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+    .bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.11; animation: drift 14s ease-in-out infinite alternate; }
+    .orb1 { width: 500px; height: 500px; background: #e8c46a; top: -100px; right: -100px; }
+    .orb2 { width: 380px; height: 380px; background: #4f8ef7; bottom: -80px; left: -80px; animation-delay: -6s; }
+    @keyframes drift { from { transform: translate(0,0); } to { transform: translate(30px,25px); } }
+    .grid-lines { position: fixed; inset: 0; z-index: 0; pointer-events: none; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 60px 60px; }
+    nav { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; padding: 16px 40px; border-bottom: 1px solid var(--border); background: rgba(11,15,26,0.85); backdrop-filter: blur(12px); }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent2), var(--accent)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    .nav-logo-text { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; color: var(--text); }
+    .nav-right { display: flex; align-items: center; gap: 16px; }
+    .nav-user { display: flex; align-items: center; gap: 10px; }
+    .nav-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #d4a843); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; color: #0b0f1a; }
+    .nav-name { font-size: 0.875rem; font-weight: 500; }
+    .btn-logout { background: none; border: 1px solid var(--border); border-radius: 100px; padding: 6px 16px; color: var(--muted); font-size: 0.8rem; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-logout:hover { border-color: var(--error); color: var(--error); }
+    .layout { position: relative; z-index: 1; display: flex; min-height: calc(100vh - 65px); }
+    .sidebar { width: 240px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 28px 16px; background: rgba(11,15,26,0.5); display: flex; flex-direction: column; gap: 4px; }
+    .sidebar-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 0 12px; margin: 16px 0 8px; }
+    .sidebar-label:first-child { margin-top: 0; }
+    .side-btn { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; border: none; background: none; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 0.875rem; cursor: pointer; text-align: left; transition: all 0.2s; width: 100%; text-decoration: none; }
+    .side-btn:hover { background: var(--card); color: var(--text); }
+    .side-btn.active { background: rgba(232,196,106,0.1); color: var(--accent); border: 1px solid rgba(232,196,106,0.2); }
+    .side-icon { font-size: 1rem; width: 20px; text-align: center; }
+    .main { flex: 1; padding: 36px 40px; overflow-y: auto; }
+    .panel { display: none; animation: fadeUp 0.4s ease both; }
+    .panel.active { display: block; }
+    .page-header { margin-bottom: 32px; }
+    .page-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; }
+    .page-sub { color: var(--muted); font-size: 0.9rem; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .stat-value { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 700; color: var(--accent); }
+    .stat-label { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+    .upload-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 32px; margin-bottom: 24px; }
+    .upload-card h3 { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 20px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+    select, input[type="text"] { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; appearance: none; -webkit-appearance: none; }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a8499' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+    select:focus, input[type="text"]:focus { border-color: rgba(232,196,106,0.5); }
+    select option { background: var(--surface); }
+    .drop-zone { border: 2px dashed var(--border); border-radius: 14px; padding: 40px 24px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 16px; position: relative; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(232,196,106,0.04); }
+    .drop-icon { font-size: 2.2rem; margin-bottom: 12px; }
+    .drop-title { font-size: 0.95rem; font-weight: 500; margin-bottom: 6px; }
+    .drop-sub { font-size: 0.8rem; color: var(--muted); }
+    .drop-sub span { color: var(--accent); cursor: pointer; }
+    #fileInput { display: none; }
+    .file-preview { background: var(--surface); border: 1px solid rgba(232,196,106,0.25); border-radius: 10px; padding: 14px 18px; display: none; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .file-preview.show { display: flex; }
+    .preview-icon { font-size: 1.4rem; }
+    .preview-name { font-size: 0.9rem; font-weight: 500; flex: 1; }
+    .preview-size { font-size: 0.78rem; color: var(--muted); }
+    .preview-remove { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; transition: color 0.2s; }
+    .preview-remove:hover { color: var(--error); }
+    .btn-primary { padding: 12px 28px; border: none; border-radius: 10px; background: linear-gradient(135deg, #d4a843, #e8c46a); color: #0b0f1a; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.15s; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .upload-progress { display: none; margin-top: 12px; }
+    .upload-progress.show { display: block; }
+    .progress-bar-wrap { height: 6px; background: var(--border); border-radius: 100px; overflow: hidden; margin-top: 8px; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 100px; width: 0%; transition: width 0.3s; }
+    .upload-status { font-size: 0.82rem; color: var(--muted); }
+    .files-section h3 { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 18px; }
+    .filter-row { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .filter-row select { flex: 1; min-width: 140px; }
+    .search-wrap { position: relative; flex: 2; min-width: 200px; }
+    .search-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px 11px 40px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+    .search-input:focus { border-color: rgba(232,196,106,0.4); }
+    .search-input::placeholder { color: var(--muted); }
+    .search-icon-wrap { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+    .file-list { display: flex; flex-direction: column; gap: 10px; }
+    .file-row { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; display: flex; align-items: center; gap: 14px; transition: all 0.2s; }
+    .file-row:hover { border-color: rgba(232,196,106,0.3); background: rgba(232,196,106,0.03); }
+    .file-type-badge { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+    .badge-pdf { background: rgba(239,68,68,0.15); }
+    .badge-ppt { background: rgba(249,115,22,0.15); }
+    .badge-doc { background: rgba(59,130,246,0.15); }
+    .badge-other { background: rgba(139,92,246,0.15); }
+    .file-info { flex: 1; }
+    .file-name { font-size: 0.9rem; font-weight: 500; margin-bottom: 3px; }
+    .file-meta { font-size: 0.75rem; color: var(--muted); }
+    .file-class-badge { font-size: 0.72rem; background: rgba(79,142,247,0.12); color: var(--accent2); border: 1px solid rgba(79,142,247,0.2); border-radius: 100px; padding: 3px 10px; white-space: nowrap; }
+    .btn-view { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; color: var(--muted); font-size: 0.8rem; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; text-decoration: none; }
+    .btn-view:hover { border-color: var(--accent2); color: var(--accent2); }
+    .btn-delete { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 6px; transition: color 0.2s; }
+    .btn-delete:hover { color: var(--error); }
+    .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty-title { font-size: 1rem; color: var(--text); margin-bottom: 6px; }
+    .loading-row { text-align: center; padding: 36px; color: var(--muted); }
+    .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 10px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface); border: 1px solid var(--border); border-radius: 100px; padding: 11px 24px; font-size: 0.85rem; color: var(--text); box-shadow: 0 8px 32px rgba(0,0,0,0.4); transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; z-index: 200; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { border-color: rgba(52,211,153,0.4); color: var(--success); }
+    .toast.fail    { border-color: rgba(248,113,113,0.4); color: var(--error); }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @media (max-width: 700px) { .sidebar { display: none; } .main { padding: 24px 18px; } .form-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="bg-canvas"><div class="orb orb1"></div><div class="orb orb2"></div></div>
+  <div class="grid-lines"></div>
+
+  <nav>
+    <a href="index.html" class="nav-logo">
+      <div class="nav-logo-icon">📚</div>
+      <span class="nav-logo-text">EduVault</span>
+    </a>
+    <div class="nav-right">
+      <div class="nav-user">
+        <div class="nav-avatar" id="navAvatar">?</div>
+        <span class="nav-name" id="navName">Loading…</span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <span class="sidebar-label">Menu</span>
+      <button class="side-btn active" id="sb-dashboard" onclick="showPanel('dashboard')"><span class="side-icon">🏠</span> Dashboard</button>
+      <button class="side-btn" id="sb-upload" onclick="showPanel('upload')"><span class="side-icon">⬆️</span> Upload File</button>
+      <button class="side-btn" id="sb-myfiles" onclick="showPanel('myfiles')"><span class="side-icon">📁</span> My Uploads</button>
+      <span class="sidebar-label">Library</span>
+      <a class="side-btn" href="student.html"><span class="side-icon">👁</span> Browse Library</a>
+    </aside>
+
+    <main class="main">
+
+      <!-- DASHBOARD PANEL -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="page-header">
+          <h2 class="page-title">Welcome back 👋</h2>
+          <p class="page-sub" id="dashSubtitle">Manage your uploads and help students learn.</p>
+        </div>
+        <div class="stats-row" id="statsRow">
+          <div class="stat-card"><div class="spinner" style="margin:0 auto 4px;"></div><div class="stat-label">Loading…</div></div>
+        </div>
+        <div class="files-section">
+          <h3>Recent Uploads</h3>
+          <div class="file-list" id="recentList"><div class="loading-row"><div class="spinner"></div><p>Loading…</p></div></div>
+        </div>
+      </div>
+
+      <!-- UPLOAD PANEL -->
+      <div class="panel" id="panel-upload">
+        <div class="page-header">
+          <h2 class="page-title">Upload a File</h2>
+          <p class="page-sub">Choose the class and subject, then upload your study material.</p>
+        </div>
+        <div class="upload-card">
+          <h3>📍 File Destination</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Class</label>
+              <select id="upClass">
+                <option value="">— Select Class —</option>
+                <option>Class 6</option><option>Class 7</option><option>Class 8</option>
+                <option>Class 9</option><option>Class 10</option><option>Class 11</option><option>Class 12</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Subject</label>
+              <select id="upSubject">
+                <option value="">— Select Subject —</option>
+                <option>Mathematics</option><option>Science</option><option>English</option>
+                <option>History</option><option>Geography</option><option>Hindi</option>
+                <option>Computer Science</option><option>Art &amp; Craft</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:20px;">
+            <label>File Title / Description (optional)</label>
+            <input type="text" id="upTitle" placeholder="e.g. Chapter 3 — Atoms and Molecules"/>
+          </div>
+          <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
+               ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+            <div class="drop-icon">📂</div>
+            <div class="drop-title">Drag &amp; drop your file here</div>
+            <div class="drop-sub">or <span>browse to choose</span> — PDF, DOC, PPT, images supported</div>
+          </div>
+          <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg" onchange="fileChosen(this)"/>
+          <div class="file-preview" id="filePreview">
+            <span class="preview-icon" id="previewIcon">📄</span>
+            <span class="preview-name" id="previewName">—</span>
+            <span class="preview-size" id="previewSize">—</span>
+            <button class="preview-remove" onclick="clearFile()">✕</button>
+          </div>
+          <!-- Upload progress -->
+          <div class="upload-progress" id="uploadProgress">
+            <div class="upload-status" id="uploadStatus">Uploading…</div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill"></div></div>
+          </div>
+          <button class="btn-primary" id="btnUpload" onclick="handleUpload()">⬆️ Upload File</button>
+        </div>
+      </div>
+
+      <!-- MY FILES PANEL -->
+      <div class="panel" id="panel-myfiles">
+        <div class="page-header">
+          <h2 class="page-title">My Uploads</h2>
+          <p class="page-sub">All files you have uploaded to the library.</p>
+        </div>
+        <div class="filter-row">
+          <div class="search-wrap">
+            <span class="search-icon-wrap">🔍</span>
+            <input class="search-input" type="text" placeholder="Search your files…" oninput="filterFiles(this.value)" id="searchInput"/>
+          </div>
+          <select id="filterClass" onchange="applyFilters()">
+            <option value="">All Classes</option>
+            <option>Class 6</option><option>Class 7</option><option>Class 8</option>
+            <option>Class 9</option><option>Class 10</option><option>Class 11</option><option>Class 12</option>
+          </select>
+          <select id="filterSubject" onchange="applyFilters()">
+            <option value="">All Subjects</option>
+            <option>Mathematics</option><option>Science</option><option>English</option>
+            <option>History</option><option>Geography</option><option>Hindi</option>
+            <option>Computer Science</option><option>Art &amp; Craft</option>
+          </select>
+        </div>
+        <div class="file-list" id="myFileList"><div class="loading-row"><div class="spinner"></div><p>Loading…</p></div></div>
+      </div>
+
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── AUTH: verify session is still valid with the backend ──────
+    // localStorage holds display info only; the real session is the Flask cookie.
+    const current = JSON.parse(localStorage.getItem('eduvault_current') || 'null');
+    if (!current) { window.location.href = 'faculty-login.html'; }
+
+    // Init nav
+    const initials = current.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    document.getElementById('navAvatar').textContent = initials;
+    document.getElementById('navName').textContent   = current.name;
+
+    // Cache for my files (loaded once, filtered client-side)
+    let myFilesCache = [];
+
+    // ── PANEL SWITCH ──────────────────────────────────────────────
+    function showPanel(id) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.side-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('panel-' + id).classList.add('active');
+      const sb = document.getElementById('sb-' + id);
+      if (sb) sb.classList.add('active');
+      if (id === 'dashboard') renderDashboard();
+      if (id === 'myfiles')   loadMyFiles();
+    }
+
+    // ── TOAST ─────────────────────────────────────────────────────
+    function showToast(msg, type='') {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.className = 'toast show ' + type;
+      setTimeout(() => t.className = 'toast ' + type, 3000);
+    }
+
+    // ── DASHBOARD ─────────────────────────────────────────────────
+    // FIX: fetches stats from /api/stats and files from /api/files/my
+    async function renderDashboard() {
+      document.getElementById('dashSubtitle').textContent =
+        'Hello, ' + current.name + '. Here\'s a quick overview of your library activity.';
+
+      try {
+        const [statsRes, filesRes] = await Promise.all([
+          fetch('/api/stats'),
+          fetch('/api/files/my'),
+        ]);
+        const statsData = await statsRes.json();
+        const filesData = await filesRes.json();
+
+        if (!statsRes.ok || !filesRes.ok) throw new Error('API error');
+
+        const mine  = filesData.files || [];
+        const stats = statsData;
+
+        document.getElementById('statsRow').innerHTML = `
+          <div class="stat-card"><div class="stat-value">${mine.length}</div><div class="stat-label">Your Uploads</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.total_files}</div><div class="stat-label">Total Library Files</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.total_classes}</div><div class="stat-label">Classes Covered</div></div>
+          <div class="stat-card"><div class="stat-value">${stats.total_subjects}</div><div class="stat-label">Subjects Covered</div></div>
+        `;
+
+        const recent = mine.slice(0, 5);
+        document.getElementById('recentList').innerHTML = recent.length
+          ? recent.map(f => fileRowHTML(f, true)).join('')
+          : `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">No uploads yet</div><p>Head to Upload File to add your first material.</p></div>`;
+
+      } catch (err) {
+        document.getElementById('statsRow').innerHTML =
+          `<div class="stat-card" style="grid-column:1/-1;color:var(--error)">⚠️ Could not load stats. Is Flask running?</div>`;
+      }
+    }
+
+    // ── FILE ROW HTML ─────────────────────────────────────────────
+    function fileRowHTML(f, compact=false) {
+      const ext    = (f.extension || (f.name||'').split('.').pop() || '').toLowerCase();
+      const icons  = { pdf:'📄', ppt:'📊', doc:'📝', docx:'📝', pptx:'📊', png:'🖼️', jpg:'🖼️' };
+      const badges = { pdf:'badge-pdf', ppt:'badge-ppt', pptx:'badge-ppt', doc:'badge-doc', docx:'badge-doc' };
+      // FIX: View button uses file_id to build the correct viewer URL
+      const viewParams = new URLSearchParams({
+        file_id  : f.id,
+        file     : f.name,
+        type     : ext,
+        class    : f.class_name  || '',
+        subject  : f.subject     || '',
+        title    : f.title       || f.name,
+        uploader : f.uploaded_by || '',
+        date     : f.upload_date || '',
+        size     : f.size        || '',
+      });
+      return `
+        <div class="file-row">
+          <div class="file-type-badge ${badges[ext]||'badge-other'}">${icons[ext]||'📄'}</div>
+          <div class="file-info">
+            <div class="file-name">${f.title || f.name}</div>
+            <div class="file-meta">${f.name} · ${f.size} · ${f.upload_date}</div>
+          </div>
+          <span class="file-class-badge">${f.class_name} · ${f.subject}</span>
+          <a class="btn-view" href="pdf-viewer.html?${viewParams.toString()}">View</a>
+          ${!compact ? `<button class="btn-delete" onclick="deleteFile('${f.id}')" title="Delete">🗑</button>` : ''}
+        </div>`;
+    }
+
+    // ── MY FILES ──────────────────────────────────────────────────
+    // FIX: loads from /api/files/my, caches result, filters client-side
+    async function loadMyFiles() {
+      document.getElementById('myFileList').innerHTML =
+        '<div class="loading-row"><div class="spinner"></div><p>Loading your files…</p></div>';
+      try {
+        const res  = await fetch('/api/files/my');
+        if (!res.ok) throw new Error('API error ' + res.status);
+        const data = await res.json();
+        myFilesCache = data.files || [];
+        renderMyFilesFromCache();
+      } catch (err) {
+        document.getElementById('myFileList').innerHTML =
+          `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title" style="color:var(--error)">Could not load files</div><p>Check if Flask server is running.</p></div>`;
+      }
+    }
+
+    function renderMyFilesFromCache(query='', classFilter='', subjectFilter='') {
+      let files = [...myFilesCache];
+      if (classFilter)   files = files.filter(f => f.class_name === classFilter);
+      if (subjectFilter) files = files.filter(f => f.subject    === subjectFilter);
+      if (query)         files = files.filter(f => (f.title||f.name).toLowerCase().includes(query.toLowerCase()));
+
+      document.getElementById('myFileList').innerHTML = files.length
+        ? files.map(f => fileRowHTML(f)).join('')
+        : `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">No files found</div><p>Try adjusting your filters or upload a new file.</p></div>`;
+    }
+
+    function applyFilters() {
+      const q   = document.getElementById('searchInput')?.value || '';
+      const cls = document.getElementById('filterClass')?.value  || '';
+      const sub = document.getElementById('filterSubject')?.value || '';
+      renderMyFilesFromCache(q, cls, sub);
+    }
+    function filterFiles(q) { applyFilters(); }
+
+    // FIX: delete calls DELETE /api/files/<id> instead of mutating localStorage
+    async function deleteFile(id) {
+      if (!confirm('Delete this file from the library?')) return;
+      try {
+        const res = await fetch('/api/files/' + id, { method: 'DELETE' });
+        if (!res.ok) {
+          const d = await res.json();
+          showToast('❌ ' + (d.error || 'Delete failed.'), 'fail'); return;
+        }
+        myFilesCache = myFilesCache.filter(f => f.id !== id);
+        renderMyFilesFromCache();
+        showToast('🗑 File deleted.', '');
+        renderDashboard();
+      } catch (err) {
+        showToast('❌ Could not delete. Server error.', 'fail');
+      }
+    }
+
+    // ── UPLOAD ────────────────────────────────────────────────────
+    let chosenFile = null;
+
+    function dragOver(e)  { e.preventDefault(); document.getElementById('dropZone').classList.add('dragover'); }
+    function dragLeave(e) { document.getElementById('dropZone').classList.remove('dragover'); }
+    function dropFile(e)  { e.preventDefault(); dragLeave(e); const f = e.dataTransfer.files[0]; if (f) setChosenFile(f); }
+    function fileChosen(input) { if (input.files[0]) setChosenFile(input.files[0]); }
+
+    function setChosenFile(f) {
+      chosenFile = f;
+      const icons = { pdf:'📄', ppt:'📊', pptx:'📊', doc:'📝', docx:'📝', png:'🖼️', jpg:'🖼️', jpeg:'🖼️' };
+      const ext   = f.name.split('.').pop().toLowerCase();
+      document.getElementById('previewIcon').textContent = icons[ext] || '📄';
+      document.getElementById('previewName').textContent = f.name;
+      document.getElementById('previewSize').textContent = (f.size/1024/1024).toFixed(2) + ' MB';
+      document.getElementById('filePreview').classList.add('show');
+    }
+    function clearFile() {
+      chosenFile = null;
+      document.getElementById('fileInput').value = '';
+      document.getElementById('filePreview').classList.remove('show');
+    }
+
+    // FIX: sends multipart POST to /api/files/upload instead of saving to localStorage
+    async function handleUpload() {
+      const cls   = document.getElementById('upClass').value;
+      const sub   = document.getElementById('upSubject').value;
+      const title = document.getElementById('upTitle').value.trim();
+
+      if (!cls)        { showToast('⚠️ Please select a class.',   'fail'); return; }
+      if (!sub)        { showToast('⚠️ Please select a subject.', 'fail'); return; }
+      if (!chosenFile) { showToast('⚠️ Please choose a file.',    'fail'); return; }
+
+      const btn = document.getElementById('btnUpload');
+      btn.disabled = true; btn.textContent = '⏳ Uploading…';
+
+      // Show progress bar
+      const prog = document.getElementById('uploadProgress');
+      const fill = document.getElementById('progressFill');
+      const stat = document.getElementById('uploadStatus');
+      prog.classList.add('show');
+      stat.textContent = 'Sending file to server…';
+
+      // Animate the bar while waiting (we don't get real XHR progress with fetch)
+      let pct = 0;
+      const ticker = setInterval(() => {
+        pct = Math.min(pct + 4, 85);
+        fill.style.width = pct + '%';
+      }, 200);
+
+      try {
+        const fd = new FormData();
+        fd.append('file',       chosenFile);
+        fd.append('class_name', cls);
+        fd.append('subject',    sub);
+        if (title) fd.append('title', title);
+
+        stat.textContent = 'Uploading file to server… (this may take a few seconds)';
+
+        const res  = await fetch('/api/files/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        clearInterval(ticker);
+        fill.style.width = '100%';
+
+        if (!res.ok) {
+          showToast('❌ ' + (data.error || 'Upload failed.'), 'fail');
+          btn.disabled = false; btn.textContent = '⬆️ Upload File';
+          prog.classList.remove('show'); fill.style.width = '0%';
+          return;
+        }
+
+        stat.textContent = '✅ Uploaded successfully!';
+        showToast('✅ File uploaded successfully!', 'success');
+
+        // Reset form
+        document.getElementById('upClass').value   = '';
+        document.getElementById('upSubject').value = '';
+        document.getElementById('upTitle').value   = '';
+        clearFile();
+
+        setTimeout(() => {
+          prog.classList.remove('show'); fill.style.width = '0%';
+          btn.disabled = false; btn.textContent = '⬆️ Upload File';
+          showPanel('myfiles');
+        }, 1200);
+
+      } catch (err) {
+        clearInterval(ticker);
+        prog.classList.remove('show'); fill.style.width = '0%';
+        showToast('❌ Upload failed. Is Flask running?', 'fail');
+        btn.disabled = false; btn.textContent = '⬆️ Upload File';
+      }
+    }
+
+    // FIX: logout calls POST /api/faculty/logout to clear the Flask session cookie,
+    //      then removes the localStorage display cache
+    async function logout() {
+      try { await fetch('/api/faculty/logout', { method: 'POST' }); } catch (_) {}
+      localStorage.removeItem('eduvault_current');
+      window.location.href = 'faculty-login.html';
+    }
+
+    // ── BOOT ─────────────────────────────────────────────────────
+    renderDashboard();
+  </script>
+</body>
+</html>

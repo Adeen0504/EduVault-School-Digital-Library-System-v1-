@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduVault — File Viewer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0f1a; --surface: #111827; --card: #161d2e; --border: #1e2d45;
+      --accent: #4f8ef7; --accent2: #e8c46a; --text: #f0ede4; --muted: #7a8499;
+      --radius: 12px;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow: hidden; }
+
+    /* NAV */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 28px; border-bottom: 1px solid var(--border);
+      background: rgba(11,15,26,0.95); backdrop-filter: blur(12px);
+      height: 58px; position: relative; z-index: 20;
+    }
+    .nav-left  { display: flex; align-items: center; gap: 14px; }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+
+    .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+    .nav-logo-icon { width: 30px; height: 30px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
+    .nav-logo-text { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; color: var(--text); }
+
+    .nav-divider { width: 1px; height: 20px; background: var(--border); }
+
+    .file-title-nav {
+      font-size: 0.85rem; font-weight: 500; color: var(--text);
+      max-width: 340px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .file-type-pill {
+      font-size: 0.7rem; background: rgba(79,142,247,0.12); color: var(--accent);
+      border: 1px solid rgba(79,142,247,0.25); border-radius: 100px; padding: 3px 10px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+
+    .btn-nav {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 14px;
+      color: var(--muted); font-size: 0.8rem; font-family: 'DM Sans', sans-serif;
+      cursor: pointer; text-decoration: none; transition: all 0.2s;
+    }
+    .btn-nav:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-nav.primary { background: rgba(79,142,247,0.1); border-color: rgba(79,142,247,0.3); color: var(--accent); }
+
+    /* VIEWER BODY */
+    .viewer-body {
+      display: flex; height: calc(100vh - 58px);
+    }
+
+    /* LEFT PANEL - file info */
+    .info-panel {
+      width: 260px; flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: rgba(11,15,26,0.6);
+      padding: 24px 20px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+
+    .info-section h4 {
+      font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.08em; margin-bottom: 12px;
+    }
+    .info-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .info-label { font-size: 0.72rem; color: var(--muted); }
+    .info-value { font-size: 0.875rem; color: var(--text); font-weight: 500; }
+
+    .big-file-icon {
+      width: 64px; height: 64px; border-radius: 16px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.8rem;
+      margin-bottom: 12px;
+    }
+    .icon-pdf  { background: rgba(239,68,68,0.15); }
+    .icon-ppt  { background: rgba(249,115,22,0.15); }
+    .icon-doc  { background: rgba(59,130,246,0.15); }
+    .icon-img  { background: rgba(16,185,129,0.15); }
+    .icon-other{ background: rgba(139,92,246,0.15); }
+
+    .full-filename {
+      font-size: 0.875rem; font-weight: 600; line-height: 1.5;
+      word-break: break-word; color: var(--text);
+    }
+
+    /* VIEWER MAIN */
+    .viewer-main {
+      flex: 1; display: flex; flex-direction: column;
+      background: #1a1f2e;
+    }
+
+    /* TOOLBAR */
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; border-bottom: 1px solid var(--border);
+      background: var(--surface); height: 48px;
+    }
+    .toolbar-left { display: flex; align-items: center; gap: 8px; }
+    .toolbar-right { display: flex; align-items: center; gap: 8px; }
+    .tool-btn {
+      background: none; border: 1px solid var(--border); border-radius: 7px;
+      padding: 5px 12px; color: var(--muted); font-size: 0.78rem; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; transition: all 0.2s; display: flex; align-items: center; gap: 5px;
+    }
+    .tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .page-info { font-size: 0.78rem; color: var(--muted); padding: 0 8px; }
+
+    /* FRAME AREA */
+    .frame-area {
+      flex: 1; overflow: auto; display: flex;
+      align-items: flex-start; justify-content: center;
+      padding: 24px; background: #13182a;
+    }
+
+    /* PDF / IFRAME EMBED */
+    .pdf-embed {
+      width: 100%; max-width: 860px;
+      height: calc(100vh - 58px - 48px - 48px);
+      min-height: 500px; border-radius: 8px; border: none;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+
+    /* FALLBACK VIEWER (for unsupported types) */
+    .fallback-viewer {
+      width: 100%; max-width: 700px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 60px 40px;
+      text-align: center; color: var(--muted);
+    }
+    .fallback-icon { font-size: 4rem; margin-bottom: 20px; }
+    .fallback-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--text); margin-bottom: 10px; }
+    .fallback-sub { font-size: 0.875rem; line-height: 1.7; margin-bottom: 28px; }
+    .btn-open-ext {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(79,142,247,0.12); border: 1px solid rgba(79,142,247,0.3);
+      border-radius: 10px; padding: 12px 24px;
+      color: var(--accent); font-size: 0.9rem; font-family: 'DM Sans', sans-serif;
+      cursor: pointer; text-decoration: none; transition: all 0.2s;
+    }
+    .btn-open-ext:hover { background: rgba(79,142,247,0.2); }
+
+    /* IMAGE VIEWER */
+    .img-viewer {
+      max-width: 100%; max-height: 100%;
+      border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      transform-origin: top center; transition: transform 0.2s;
+    }
+
+    /* LOADING STATE */
+    .load-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; width: 100%; color: var(--muted); gap: 16px;
+    }
+    .load-spinner {
+      width: 40px; height: 40px; border: 3px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* NO FILE STATE */
+    .no-file {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: var(--muted); text-align: center; padding: 40px;
+    }
+    .no-file-icon { font-size: 3.5rem; margin-bottom: 20px; }
+    .no-file h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--text); margin-bottom: 10px; }
+
+    /* ZOOM */
+    #zoomLevel { font-size: 0.78rem; color: var(--muted); min-width: 40px; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-left">
+      <a href="index.html" class="nav-logo">
+        <div class="nav-logo-icon">📚</div>
+        <span class="nav-logo-text">EduVault</span>
+      </a>
+      <div class="nav-divider"></div>
+      <span class="file-title-nav" id="navFileTitle">Loading file…</span>
+      <span class="file-type-pill" id="navFilePill">—</span>
+    </div>
+    <div class="nav-right">
+      <button class="btn-nav" onclick="history.back()">← Back</button>
+      <!-- FIX: download href is set dynamically to /api/files/<id>/download -->
+      <a class="btn-nav primary" id="btnDownload" href="#" download>⬇ Download</a>
+    </div>
+  </nav>
+
+  <div class="viewer-body">
+
+    <!-- LEFT INFO PANEL -->
+    <div class="info-panel" id="infoPanel">
+      <div class="info-section">
+        <div class="big-file-icon" id="bigIcon">📄</div>
+        <div class="full-filename" id="fullFilename">—</div>
+      </div>
+
+      <div class="info-section">
+        <h4>File Details</h4>
+        <div class="info-row">
+          <span class="info-label">Type</span>
+          <span class="info-value" id="infoType">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Class</span>
+          <span class="info-value" id="infoClass">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Subject</span>
+          <span class="info-value" id="infoSubject">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Uploaded By</span>
+          <span class="info-value" id="infoBy">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value" id="infoDate">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Size</span>
+          <span class="info-value" id="infoSize">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEWER MAIN -->
+    <div class="viewer-main">
+
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="tool-btn" onclick="zoomOut()">🔍 −</button>
+          <span id="zoomLevel">100%</span>
+          <button class="tool-btn" onclick="zoomIn()">🔍 +</button>
+          <button class="tool-btn" onclick="zoomReset()">⟳ Reset</button>
+        </div>
+        <div class="toolbar-right">
+          <button class="tool-btn" onclick="toggleInfo()">ℹ Info</button>
+          <button class="tool-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+        </div>
+      </div>
+
+      <!-- FRAME -->
+      <div class="frame-area" id="frameArea">
+        <div class="no-file">
+          <div class="no-file-icon">📂</div>
+          <h3>No file selected</h3>
+          <p>Go back and click a file to view it here.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ── READ URL PARAMS ────────────────────────────────────
+    // FIX: Now reads file_id (UUID) in addition to the display params.
+    //      Metadata (title, uploader, date, size) is passed directly in
+    //      the URL by student.html so we never need localStorage.
+    const params      = new URLSearchParams(window.location.search);
+    const fileId      = params.get('file_id') || '';      // UUID — used to build the fetch URL
+    const fileName    = params.get('file')    || '';      // original filename — display only
+    const fileType    = (params.get('type')   || '').toLowerCase();
+    const fileClass   = params.get('class')   || '—';
+    const fileSubject = params.get('subject') || '—';
+    const fileTitle   = params.get('title')   || fileName;
+    const fileBy      = params.get('uploader')|| '—';
+    const fileDate    = params.get('date')    || '—';
+    const fileSize    = params.get('size')    || '—';
+
+    // ── BUILD THE REAL DOWNLOAD/STREAM URL ────────────────
+    // FIX: points to the Flask route GET /api/files/<file_id>/download
+    //      which streams the file from Gmail to the browser.
+    const downloadURL = fileId ? `/api/files/${fileId}/download` : '#';
+
+    // ── POPULATE UI ───────────────────────────────────────
+    if (fileId && fileName) {
+      document.getElementById('navFileTitle').textContent  = fileTitle;
+      document.getElementById('navFilePill').textContent   = fileType.toUpperCase() || 'FILE';
+      document.getElementById('fullFilename').textContent  = fileName;
+      document.getElementById('infoType').textContent      = fileType.toUpperCase() || '—';
+      document.getElementById('infoClass').textContent     = fileClass;
+      document.getElementById('infoSubject').textContent   = fileSubject;
+      document.getElementById('infoBy').textContent        = fileBy;
+      document.getElementById('infoDate').textContent      = fileDate;
+      document.getElementById('infoSize').textContent      = fileSize;
+
+      // FIX: Download button now points to the real streaming endpoint
+      const dlBtn = document.getElementById('btnDownload');
+      dlBtn.href     = downloadURL;
+      dlBtn.download = fileName;
+
+      // File type icon
+      const icons  = { pdf:'📄', ppt:'📊', pptx:'📊', doc:'📝', docx:'📝', png:'🖼️', jpg:'🖼️', jpeg:'🖼️' };
+      const iconCls= { pdf:'icon-pdf', ppt:'icon-ppt', pptx:'icon-ppt', doc:'icon-doc', docx:'icon-doc', png:'icon-img', jpg:'icon-img', jpeg:'icon-img' };
+      const bigIcon = document.getElementById('bigIcon');
+      bigIcon.textContent = icons[fileType] || '📄';
+      bigIcon.className   = 'big-file-icon ' + (iconCls[fileType] || 'icon-other');
+
+      document.title = 'EduVault — ' + fileTitle;
+      renderViewer();
+    }
+
+    // ── RENDER VIEWER ─────────────────────────────────────
+    function renderViewer() {
+      const area = document.getElementById('frameArea');
+
+      // ── PDF ── native browser embed ──────────────────────
+      // FIX: was `src="about:blank"`. Now uses the real streaming URL.
+      //      Content-Disposition: inline in app.py tells the browser to
+      //      display the PDF, not download it.
+      if (fileType === 'pdf') {
+        area.innerHTML = `
+          <div class="load-state" id="loadState">
+            <div class="load-spinner"></div>
+            <span>Loading PDF…</span>
+          </div>
+          <embed id="pdfEmbed"
+            class="pdf-embed"
+            src="${downloadURL}"
+            type="application/pdf"
+            title="${fileName}"
+            style="display:none;"
+            onload="onEmbedLoad()"
+            onerror="onEmbedError()"/>`;
+        return;
+      }
+
+      // ── IMAGES ── img tag ─────────────────────────────────
+      if (['png','jpg','jpeg','gif','webp'].includes(fileType)) {
+        area.innerHTML = `
+          <div class="load-state" id="loadState">
+            <div class="load-spinner"></div>
+            <span>Loading image…</span>
+          </div>
+          <img class="img-viewer" id="viewerImg"
+            src="${downloadURL}"
+            alt="${fileName}"
+            style="display:none;"
+            onload="onImgLoad()"
+            onerror="onImgError()"/>`;
+        return;
+      }
+
+      // ── DOC / PPT / PPTX ── Google Docs Viewer ───────────
+      // FIX: was a static fallback card. Now uses Google Docs Viewer
+      //      with the real hosted file URL so it renders inline.
+      if (['doc','docx','ppt','pptx'].includes(fileType)) {
+        const absURL   = window.location.origin + downloadURL;
+        const gdocsURL = `https://docs.google.com/viewer?url=${encodeURIComponent(absURL)}&embedded=true`;
+        area.innerHTML = `
+          <iframe class="pdf-embed" id="docsEmbed"
+            src="${gdocsURL}"
+            frameborder="0"
+            title="${fileName}"
+            onload="onDocsLoad()"
+            onerror="onDocsError()">
+          </iframe>`;
+        return;
+      }
+
+      // ── UNKNOWN TYPE ── download prompt ──────────────────
+      showFallback(area, '📄', 'Preview Not Available',
+        `Browser preview is not supported for this file type (<strong>${fileType || 'unknown'}</strong>). Download the file to view it.`
+      );
+    }
+
+    // ── LOAD / ERROR CALLBACKS ────────────────────────────
+    function onEmbedLoad() {
+      const ls = document.getElementById('loadState');
+      const em = document.getElementById('pdfEmbed');
+      if (ls) ls.style.display = 'none';
+      if (em) em.style.display = '';
+    }
+
+    function onEmbedError() {
+      const area = document.getElementById('frameArea');
+      showFallback(area, '⚠️', 'Could Not Load PDF',
+        `The file could not be loaded. It may still be processing, or there was a server error. Try downloading it instead.`
+      );
+    }
+
+    function onImgLoad() {
+      const ls = document.getElementById('loadState');
+      const im = document.getElementById('viewerImg');
+      if (ls) ls.style.display = 'none';
+      if (im) im.style.display = '';
+    }
+
+    function onImgError() {
+      const area = document.getElementById('frameArea');
+      showFallback(area, '🖼️', 'Could Not Load Image',
+        `The image could not be loaded from the server.`
+      );
+    }
+
+    function onDocsLoad() {
+      // Google Docs iframe fires onload even on error (it shows its own error page).
+      // Nothing extra needed — the iframe already fills the space.
+    }
+
+    function onDocsError() {
+      const area = document.getElementById('frameArea');
+      showFallback(area, '📄', 'Could Not Load Document',
+        `Google Docs Viewer could not render this file. Try downloading it instead.`
+      );
+    }
+
+    function showFallback(area, icon, title, msg) {
+      area.innerHTML = `
+        <div class="fallback-viewer">
+          <div class="fallback-icon">${icon}</div>
+          <div class="fallback-title">${title}</div>
+          <div class="fallback-sub">${msg}</div>
+          <a class="btn-open-ext" href="${downloadURL}" download="${fileName}">⬇ Download to View</a>
+        </div>`;
+    }
+
+    // ── ZOOM ──────────────────────────────────────────────
+    let zoom = 1;
+    function applyZoom() {
+      document.getElementById('zoomLevel').textContent = Math.round(zoom*100) + '%';
+      const img = document.getElementById('viewerImg');
+      if (img) img.style.transform = `scale(${zoom})`;
+      // Note: zoom on <embed> is not supported in most browsers.
+      // For PDFs, the browser's built-in PDF reader handles its own zoom.
+    }
+    function zoomIn()    { zoom = Math.min(zoom + 0.1, 2.5); applyZoom(); }
+    function zoomOut()   { zoom = Math.max(zoom - 0.1, 0.4); applyZoom(); }
+    function zoomReset() { zoom = 1; applyZoom(); }
+
+    // ── FULLSCREEN ────────────────────────────────────────
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+
+    // ── TOGGLE INFO PANEL ─────────────────────────────────
+    function toggleInfo() {
+      const p = document.getElementById('infoPanel');
+      p.style.display = p.style.display === 'none' ? '' : 'none';
+    }
+  </script>
+</body>
+</html>
